@@ -1,7 +1,8 @@
 package aqua.blatt1.broker;
 
+import messaging.Endpoint;
 
-import java.javax.xml.ws.Endpoint;
 public class Broker<T> {
-    static Endpoint
+	Endpoint x = new Endpoint(4711);
+
 }

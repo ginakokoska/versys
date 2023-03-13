@@ -1,7 +1,7 @@
 <component name="libraryTable">
   <library name="messaging">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/messaging.jar!/" />
+      <root url="jar://$PROJECT_DIR$/aqua/messaging.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
