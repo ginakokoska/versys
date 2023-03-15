@@ -5,6 +5,7 @@ import aqua.blatt1.client.TankModel;
 import aqua.blatt1.common.FishModel;
 import aqua.blatt1.common.msgtypes.DeregisterRequest;
 import aqua.blatt1.common.msgtypes.HandoffRequest;
+import aqua.blatt1.common.msgtypes.RegisterRequest;
 import aqua.blatt1.common.msgtypes.RegisterResponse;
 import messaging.Endpoint;
 import messaging.Message;
@@ -18,9 +19,10 @@ public class Broker {
 	public void broker() {
 		while(true) {
 			Message msg = end.blockingReceive();
-
-			if (msg.getPayload() instanceof RegisterResponse)
+			System.out.println(msg);
+			if (msg.getPayload() instanceof RegisterRequest) {
 				register(msg.getSender());
+			}
 
 			if (msg.getPayload() instanceof DeregisterRequest)
 				deregister(msg.getSender());
@@ -48,7 +50,7 @@ public class Broker {
 	// aufrufen bei HandoffRequest
 	public void handoffFish(InetSocketAddress cli, HandoffRequest h) {
 		int idx = cc.indexOf(cli);
-		int next_idx = (idx%cc.size())+1;
+		int next_idx = (idx+1)%cc.size();
 		InetSocketAddress next = cc.getClient(next_idx);
 		end.send(next, h);
 	}
