@@ -6,28 +6,27 @@ import aqua.blatt1.common.msgtypes.RegisterRequest;
 import aqua.blatt1.common.msgtypes.RegisterResponse;
 import messaging.Endpoint;
 import messaging.Message;
-import javax.swing.ImageIcon;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JOptionPane;
+
+import java.awt.*;
+
+import javax.swing.*;
 import java.util.concurrent.*;
 import java.net.InetSocketAddress;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-
-
 public class Broker {
 	static Endpoint end = new Endpoint(4711);
 	private ExecutorService pool;
-	boolean stopFlag = false;
+	static boolean stopFlag = false;
 
 	static ClientCollection<InetSocketAddress> cc = new ClientCollection<InetSocketAddress>();
 	public void broker() {
 
 		pool = Executors.newCachedThreadPool();
 		while (!stopFlag) {
+			System.out.println(stopFlag);
 			Message msg = end.blockingReceive();
 			BrokerTask t = new BrokerTask(msg);
 			// for (int i = 0; i < poolSize; i++) pool[i] =
@@ -39,18 +38,24 @@ public class Broker {
 
 
 	public static void main(String[] args) {
-		EingabeMaske m = new EingabeMaske();
+		//EingabeMaske m = new EingabeMaske();
+		//Poisoner p = new Poisoner();
 		Broker b = new Broker();
-		m.run();
+		//m.start();
 		b.broker();
 	}
 
 	public static class EingabeMaske extends Thread {
-		JFrame frame = new JFrame("Thread beendet");
-		JOptionPane
 
 
+		@Override
+		public void run() {
+			javax.swing.JOptionPane.showMessageDialog(null, "Broker beenden?");
+			Poisoner p = new Poisoner();
+
+		}
 	}
+
 	public static class BrokerTask implements Runnable {
 		Message msg;
 		private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
@@ -83,7 +88,6 @@ public class Broker {
 		}
 
 
-
 		@Override
 		public void run() {
 
@@ -106,7 +110,11 @@ public class Broker {
 					readLock.unlock();
 				}
 
-
+				if (msg.getPayload() instanceof PoisonPill) {
+					writeLock.lock();
+					stopFlag = true;
+					writeLock.unlock();
+				}
 		}
 	}
 
