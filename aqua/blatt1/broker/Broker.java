@@ -1,8 +1,5 @@
 package aqua.blatt1.broker;
 
-import aqua.blatt1.client.ClientCommunicator;
-import aqua.blatt1.client.TankModel;
-import aqua.blatt1.common.FishModel;
 import aqua.blatt1.common.msgtypes.DeregisterRequest;
 import aqua.blatt1.common.msgtypes.HandoffRequest;
 import aqua.blatt1.common.msgtypes.RegisterRequest;
