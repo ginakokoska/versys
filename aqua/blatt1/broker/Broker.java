@@ -68,32 +68,60 @@ public class Broker {
 
 
 		public void register(InetSocketAddress cli) {
+			InetSocketAddress left_left;
+			InetSocketAddress right_right;
+			if (cc.size() == 0) {
+				left_left = cli;
+				right_right = cli;
+			} else {
+				left_left = cc.getLeftNeighorOf(cc.size()-1);
+				right_right = cc.getRightNeighorOf(0);
+
+			}
+
+			if (cc.size() == 0) {
+				end.send(cli, new Token());
+			}
 			String id = "tank" + (cc.size()+1);
 			cc.add(id, cli);
 			int idx = cc.indexOf(cli);
 			InetSocketAddress left = cc.getLeftNeighorOf(idx);
 			InetSocketAddress right = cc.getRightNeighorOf(idx);
 			NeighborUpdate n = new NeighborUpdate(left, right);
+			NeighborUpdate left_n = new NeighborUpdate(left_left, cli);
+			NeighborUpdate right_n = new NeighborUpdate(cli, right_right);
 			if (left != right) {
-				end.send(left, n);
-				end.send(right, n);
+				//end.send(cli, n);
+				end.send(left, left_n);
+				end.send(right, right_n);
 			} else {
-				end.send(left, n); // wenn n = 2
+				end.send(left, left_n); // wenn n = 2
 			}
 			end.send(cli, new RegisterResponse(id));
 		}
 
 		// aufrufen bei DeregisterRequest
 		public void deregister(InetSocketAddress cli) {
+			InetSocketAddress left_left;
+			InetSocketAddress right_right;
+			if (cc.size() == 0) {
+				left_left = cli;
+				right_right = cli;
+			} else {
+				left_left = cc.getLeftNeighorOf(cc.size()-1);
+				right_right = cc.getRightNeighorOf(0);
+
+			}
 			int idx = cc.indexOf(cli);
 			InetSocketAddress left = cc.getLeftNeighorOf(idx);
 			InetSocketAddress right = cc.getRightNeighorOf(idx);
-			NeighborUpdate n = new NeighborUpdate(left, right);
+			NeighborUpdate n_left = new NeighborUpdate(left_left, right);
+			NeighborUpdate n_right = new NeighborUpdate(left, right_right);
 			if (left != right) {
-				end.send(left, n);
-				end.send(right, n);
+				end.send(left, n_left);
+				end.send(right, n_right);
 			} else {
-				end.send(left, n); // wenn n = 2
+				end.send(left, n_left); // wenn n = 2
 			}
 			cc.remove(idx);
 		}

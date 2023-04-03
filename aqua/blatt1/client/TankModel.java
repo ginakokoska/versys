@@ -1,16 +1,12 @@
 package aqua.blatt1.client;
 
 import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Observable;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
+
 
 public class TankModel extends Observable implements Iterable<FishModel> {
 
@@ -24,10 +20,14 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected final ClientCommunicator.ClientForwarder forwarder;
 	protected InetSocketAddress left;
 	protected InetSocketAddress right;
+	protected Boolean hasToken = false;
+	protected Timer timer;
+
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
 		this.forwarder = forwarder;
+		this.timer = new Timer();
 	}
 
 	synchronized void onRegistration(String id) {
@@ -50,6 +50,22 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	synchronized void receiveFish(FishModel fish) {
 		fish.setToStart();
 		fishies.add(fish);
+	}
+
+	synchronized void receiveToken() throws InterruptedException {
+		hasToken = true;
+		System.out.println("sched");
+		TimerTask sendToken = new TimerTask() {
+			public void run() {
+				hasToken = false;
+				forwarder.forwardToken(TankModel.this); //?
+			}
+		};
+		timer.schedule(sendToken, 2000);
+	}
+
+	synchronized Boolean hasToken(){
+		return hasToken;
 	}
 
 	synchronized void updateNeighbors(InetSocketAddress left, InetSocketAddress right) {
@@ -76,7 +92,12 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 			fish.update();
 
 			if (fish.hitsEdge())
-				forwarder.handOff(fish, this);
+				if (hasToken) {
+					forwarder.handOff(fish, this);
+				} else {
+					fish.reverse();
+				}
+
 
 			if (fish.disappears())
 				it.remove();
@@ -105,5 +126,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	public synchronized void finish() {
 		forwarder.deregister(id);
 	}
+
+
 
 }

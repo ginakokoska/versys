@@ -3,6 +3,7 @@ package aqua.blatt1.client;
 import java.net.InetSocketAddress;
 
 import aqua.blatt1.broker.NeighborUpdate;
+import aqua.blatt1.broker.Token;
 import aqua.blatt1.common.Direction;
 import messaging.Endpoint;
 import messaging.Message;
@@ -28,6 +29,7 @@ public class ClientCommunicator {
 		}
 
 		public void register() {
+
 			endpoint.send(broker, new RegisterRequest());
 		}
 
@@ -47,6 +49,11 @@ public class ClientCommunicator {
 			}
 		}
 
+		public void forwardToken(TankModel tank) {
+
+			System.out.println("in cc left " + tank.left);
+			endpoint.send(tank.left, new Token());
+		}
 
 	}
 
@@ -68,8 +75,19 @@ public class ClientCommunicator {
 				if (msg.getPayload() instanceof HandoffRequest)
 					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());
 
-				if (msg.getPayload() instanceof NeighborUpdate)
+				if (msg.getPayload() instanceof NeighborUpdate) {
+					System.out.println("left " + (((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getLeft());
+					System.out.println("right " + (((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getRight());
 					tankModel.updateNeighbors((((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getLeft(), (((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getRight());
+				}
+
+				if (msg.getPayload() instanceof Token) {
+					try {
+						tankModel.receiveToken();
+					} catch (InterruptedException e) {
+						throw new RuntimeException(e);
+					}
+				}
 			}
 			System.out.println("Receiver stopped.");
 		}
