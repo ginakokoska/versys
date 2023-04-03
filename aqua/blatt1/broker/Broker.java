@@ -86,6 +86,15 @@ public class Broker {
 		// aufrufen bei DeregisterRequest
 		public void deregister(InetSocketAddress cli) {
 			int idx = cc.indexOf(cli);
+			InetSocketAddress left = cc.getLeftNeighorOf(idx);
+			InetSocketAddress right = cc.getRightNeighorOf(idx);
+			NeighborUpdate n = new NeighborUpdate(left, right);
+			if (left != right) {
+				end.send(left, n);
+				end.send(right, n);
+			} else {
+				end.send(left, n); // wenn n = 2
+			}
 			cc.remove(idx);
 		}
 

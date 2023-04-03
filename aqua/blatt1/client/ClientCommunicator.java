@@ -35,9 +35,19 @@ public class ClientCommunicator {
 			endpoint.send(broker, new DeregisterRequest(id));
 		}
 
-		public void handOff(FishModel fish) {
-			endpoint.send(broker, new HandoffRequest(fish));
+		public void handOff(FishModel fish, TankModel tank) {
+
+			Direction dir = fish.getDirection();
+			InetSocketAddress left = tank.left;
+			InetSocketAddress right = tank.right;
+			if (dir == Direction.LEFT) {
+				endpoint.send(left, new HandoffRequest(fish));
+			} else {
+				endpoint.send(right, new HandoffRequest(fish));
+			}
 		}
+
+
 	}
 
 	public class ClientReceiver extends Thread {
