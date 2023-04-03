@@ -70,6 +70,16 @@ public class Broker {
 		public void register(InetSocketAddress cli) {
 			String id = "tank" + (cc.size()+1);
 			cc.add(id, cli);
+			int idx = cc.indexOf(cli);
+			InetSocketAddress left = cc.getLeftNeighorOf(idx);
+			InetSocketAddress right = cc.getRightNeighorOf(idx);
+			NeighborUpdate n = new NeighborUpdate(left, right);
+			if (left != right) {
+				end.send(left, n);
+				end.send(right, n);
+			} else {
+				end.send(left, n); // wenn n = 2
+			}
 			end.send(cli, new RegisterResponse(id));
 		}
 
@@ -106,6 +116,7 @@ public class Broker {
 
 				if (msg.getPayload() instanceof HandoffRequest) {
 					readLock.lock();
+					System.out.println("HANDOFF BROKER");
 					handoffFish(msg.getSender(), new HandoffRequest(((HandoffRequest)msg.getPayload()).getFish()));
 					readLock.unlock();
 				}
