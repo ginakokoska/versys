@@ -50,8 +50,6 @@ public class ClientCommunicator {
 		}
 
 		public void forwardToken(TankModel tank) {
-
-			System.out.println("in cc left " + tank.left);
 			endpoint.send(tank.left, new Token());
 		}
 
@@ -76,8 +74,6 @@ public class ClientCommunicator {
 					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());
 
 				if (msg.getPayload() instanceof NeighborUpdate) {
-					System.out.println("left " + (((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getLeft());
-					System.out.println("right " + (((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getRight());
 					tankModel.updateNeighbors((((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getLeft(), (((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getRight());
 				}
 

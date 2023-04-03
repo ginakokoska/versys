@@ -54,7 +54,6 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 	synchronized void receiveToken() throws InterruptedException {
 		hasToken = true;
-		System.out.println("sched");
 		TimerTask sendToken = new TimerTask() {
 			public void run() {
 				hasToken = false;

@@ -26,7 +26,6 @@ public class Broker {
 
 		pool = Executors.newCachedThreadPool();
 		while (!stopFlag) {
-			System.out.println(stopFlag);
 			Message msg = end.blockingReceive();
 			BrokerTask t = new BrokerTask(msg);
 			// for (int i = 0; i < poolSize; i++) pool[i] =
@@ -90,11 +89,12 @@ public class Broker {
 			NeighborUpdate n = new NeighborUpdate(left, right);
 			NeighborUpdate left_n = new NeighborUpdate(left_left, cli);
 			NeighborUpdate right_n = new NeighborUpdate(cli, right_right);
-			if (left != right) {
-				//end.send(cli, n);
+			if (cc.size() > 1) {
+				end.send(cli, n);
 				end.send(left, left_n);
 				end.send(right, right_n);
 			} else {
+				end.send(cli, n);
 				end.send(left, left_n); // wenn n = 2
 			}
 			end.send(cli, new RegisterResponse(id));
@@ -137,31 +137,29 @@ public class Broker {
 
 		@Override
 		public void run() {
+			if (msg.getPayload() instanceof RegisterRequest) {
+				writeLock.lock();
+				register(msg.getSender());
+				writeLock.unlock();
+			}
 
-			System.out.println(msg);
-				if (msg.getPayload() instanceof RegisterRequest) {
-					writeLock.lock();
-					register(msg.getSender());
-					writeLock.unlock();
-				}
+			if (msg.getPayload() instanceof DeregisterRequest) {
+				writeLock.lock();
+				deregister(msg.getSender());
+				writeLock.unlock();
+			}
 
-				if (msg.getPayload() instanceof DeregisterRequest) {
-					writeLock.lock();
-					deregister(msg.getSender());
-					writeLock.unlock();
-				}
+			if (msg.getPayload() instanceof HandoffRequest) {
+				readLock.lock();
+				handoffFish(msg.getSender(), new HandoffRequest(((HandoffRequest)msg.getPayload()).getFish()));
+				readLock.unlock();
+			}
 
-				if (msg.getPayload() instanceof HandoffRequest) {
-					readLock.lock();
-					handoffFish(msg.getSender(), new HandoffRequest(((HandoffRequest)msg.getPayload()).getFish()));
-					readLock.unlock();
-				}
-
-				if (msg.getPayload() instanceof PoisonPill) {
-					writeLock.lock();
-					stopFlag = true;
-					writeLock.unlock();
-				}
+			if (msg.getPayload() instanceof PoisonPill) {
+				writeLock.lock();
+				stopFlag = true;
+				writeLock.unlock();
+			}
 		}
 	}
 
