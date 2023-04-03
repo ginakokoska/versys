@@ -125,7 +125,6 @@ public class Broker {
 
 				if (msg.getPayload() instanceof HandoffRequest) {
 					readLock.lock();
-					System.out.println("HANDOFF BROKER");
 					handoffFish(msg.getSender(), new HandoffRequest(((HandoffRequest)msg.getPayload()).getFish()));
 					readLock.unlock();
 				}
