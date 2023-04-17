@@ -9,5 +9,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="messaging" level="project" />
     <orderEntry type="library" name="messaging" level="project" />
+    <orderEntry type="library" name="messaging (2)" level="project" />
   </component>
 </module>
