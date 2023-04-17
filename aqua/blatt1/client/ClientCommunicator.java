@@ -78,8 +78,18 @@ public class ClientCommunicator {
 					tankModel.onRegistration(((RegisterResponse) msg.getPayload()).getId());
 
 				if (msg.getPayload() instanceof HandoffRequest)
-					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());
 
+					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish(), msg.getSender());
+				if (msg.getPayload() instanceof Token) {
+
+					try {
+						System.out.println("ID:"+tankModel.id+" tried to receive Token");
+						tankModel.receiveToken();
+					} catch (Exception e) {
+						System.out.println("Token Exception!");
+						throw new RuntimeException(e);
+					}
+				}
 				if (msg.getPayload() instanceof NeighborUpdate) {
 					tankModel.updateNeighbors((((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getLeft(), (((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getRight());
 				}

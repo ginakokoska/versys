@@ -1,16 +1,12 @@
 package aqua.blatt1.client;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Observable;
 import java.util.Observer;
 
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
 
 import aqua.blatt1.common.FishModel;
 
@@ -29,6 +25,11 @@ public class TankView extends JPanel implements Observer {
 			@Override
 			public void run() {
 				repaint();
+				if (tankModel.isSnapshotDone) {
+					tankModel.isSnapshotDone = false;
+					count = tankModel.totalFishies;
+					JOptionPane.showMessageDialog(TankView.this, "Total Fishies: " + count);
+				}
 			}
 		};
 
@@ -41,6 +42,8 @@ public class TankView extends JPanel implements Observer {
 				tankModel.newFish(e.getX(), e.getY());
 			}
 		});
+
+
 	}
 
 	private void drawBorders(Graphics2D g2d) {
@@ -57,7 +60,10 @@ public class TankView extends JPanel implements Observer {
 		}
 
 		if (!tankModel.hasToken) drawBorders(g2d);
+
 	}
+
+
 
 	@Override
 	public void paintComponent(Graphics g) {
@@ -68,5 +74,6 @@ public class TankView extends JPanel implements Observer {
 	@Override
 	public void update(Observable o, Object arg) {
 		SwingUtilities.invokeLater(repaintRunnable);
+
 	}
 }

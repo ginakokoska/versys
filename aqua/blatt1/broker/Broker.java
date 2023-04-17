@@ -65,7 +65,6 @@ public class Broker {
 		}
 
 
-
 		public void register(InetSocketAddress cli) {
 			InetSocketAddress left_left;
 			InetSocketAddress right_right;

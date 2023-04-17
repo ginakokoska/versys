@@ -14,7 +14,7 @@ public class SnapshotController implements ActionListener {
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		TankModel x = new TankModel();
-		x.initiateSnapshot();
+		System.out.println("My ID: " + tankModel.id);
+		tankModel.initiateSnapshot();
 	}
 }

@@ -85,6 +85,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 			}
 		};
 		timer.schedule(sendToken, 2000);
+		System.out.println("after timer");
 	}
 
 	synchronized Boolean hasToken(){
@@ -198,7 +199,6 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	public synchronized void finish() {
 		forwarder.deregister(id);
 	}
-
 
 
 }
