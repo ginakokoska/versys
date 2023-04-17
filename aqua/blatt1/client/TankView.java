@@ -19,6 +19,7 @@ public class TankView extends JPanel implements Observer {
 	private final TankModel tankModel;
 	private final FishView fishView;
 	private final Runnable repaintRunnable;
+	private int count;
 
 	public TankView(final TankModel tankModel) {
 		this.tankModel = tankModel;

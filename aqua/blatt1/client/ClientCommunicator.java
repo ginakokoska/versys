@@ -1,6 +1,7 @@
 package aqua.blatt1.client;
 
 import java.net.InetSocketAddress;
+import java.util.Objects;
 
 import aqua.blatt1.broker.NeighborUpdate;
 import aqua.blatt1.broker.SnapToken;
@@ -51,10 +52,14 @@ public class ClientCommunicator {
 			}
 		}
 
-		public void forwardToken(TankModel tank) {endpoint.send(tank.left, new Token());}
+		public void forwardToken(TankModel tank) {
+			System.out.println("IP:"+this.broker+" tried to give away Token to "+tank.left+"(forwardTokenMethod)");
+			endpoint.send(tank.left, new Token());
+			System.out.println("after");
+		}
 		public void forwardSnapToken(InetSocketAddress a, SnapToken s) {endpoint.send(a, s);}
-
-		public void sendMarker(TankModel tank) {endpoint.send(tank.left, new SnapshotMarker());}
+		public void sendMarker(InetSocketAddress next) {endpoint.send(next, new SnapshotMarker());
+		}
 	}
 
 	public class ClientReceiver extends Thread {
@@ -68,7 +73,7 @@ public class ClientCommunicator {
 		public void run() {
 			while (!isInterrupted()) {
 				Message msg = endpoint.blockingReceive();
-
+				System.out.println(msg);
 				if (msg.getPayload() instanceof RegisterResponse)
 					tankModel.onRegistration(((RegisterResponse) msg.getPayload()).getId());
 
@@ -78,17 +83,20 @@ public class ClientCommunicator {
 				if (msg.getPayload() instanceof NeighborUpdate) {
 					tankModel.updateNeighbors((((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getLeft(), (((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getRight());
 				}
-
-				if (msg.getPayload() instanceof Token) {
-					try {
-						tankModel.receiveToken();
-					} catch (InterruptedException e) {
-						throw new RuntimeException(e);
-					}
-				}
-
 				if (msg.getPayload() instanceof SnapshotMarker) {
-					tankModel.initiateSnapshot();
+					InetSocketAddress sender = msg.getSender();
+					tankModel.endRecord(sender);
+				}
+				if (msg.getPayload() instanceof SnapToken) {
+
+					if (Objects.equals(((SnapToken) msg.getPayload()).getID(), tankModel.id)) {
+						tankModel.isSnapshotDone = true;
+					}
+					else {
+						int newCount = tankModel.totalFishies + ((SnapToken) msg.getPayload()).getCount();
+						String tokenID = ((SnapToken) msg.getPayload()).getID();
+						tankModel.nextSnapshot(newCount, tokenID);
+					}
 				}
 			}
 			System.out.println("Receiver stopped.");

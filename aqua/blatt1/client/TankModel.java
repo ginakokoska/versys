@@ -9,7 +9,7 @@ import aqua.blatt1.broker.SnapToken;
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
 
-import static aqua.blatt1.client.TankModel.Mode.IDLE;
+import static aqua.blatt1.client.TankModel.Mode.*;
 
 
 public class TankModel extends Observable implements Iterable<FishModel> {
@@ -25,10 +25,13 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected InetSocketAddress left;
 	protected InetSocketAddress right;
 	protected Boolean hasToken = false;
+	protected Boolean hasSnapToken = false;
 	protected Timer timer;
 	protected enum Mode {IDLE, LEFT, RIGHT, BOTH}
 	protected Mode recmode = IDLE;
-	protected int fishCount = 0;
+	protected int totalFishies = 0;
+	protected int shCount = 0;
+	protected boolean isSnapshotDone = false;
 
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
@@ -54,17 +57,30 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		}
 	}
 
-	synchronized void receiveFish(FishModel fish) {
+	synchronized void receiveFish(FishModel fish, InetSocketAddress sender) {
 		fish.setToStart();
 		fishies.add(fish);
-		fishCount++;
+		// only update fishcount wenn marker noch nicht gesezt ist
+		if (this.recmode == BOTH) {
+			totalFishies++;
+		} else if (this.recmode == LEFT) {
+			if (sender.equals(left)) {
+				totalFishies++;
+			}
+		} else if (this.recmode == RIGHT) {
+			if (sender.equals(right)) {
+				totalFishies++;
+			}
+		}
 	}
 
 	synchronized void receiveToken() throws InterruptedException {
 		hasToken = true;
+		System.out.println("ID:"+this.id + " has Token");
 		TimerTask sendToken = new TimerTask() {
 			public void run() {
 				hasToken = false;
+				System.out.println("ID:"+TankModel.this.id + " gave away Token");
 				forwarder.forwardToken(TankModel.this); //?
 			}
 		};
@@ -80,9 +96,50 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 		this.right = right;
 	}
 
-	synchronized void initiateSnapshot() {
-		this.recmode = IDLE;
-		forwarder.forwardSnapToken(left, new SnapToken(fishCount));
+	protected void initiateSnapshot() {
+		// starte aufzeichnungsmodus für alle Eingangskanäle
+		this.recmode = BOTH;
+		totalFishies = this.fishies.size()-shCount;
+		hasSnapToken = true;
+		forwarder.forwardSnapToken(left, new SnapToken(totalFishies, id));
+		System.out.println("initiated token with count: " + totalFishies);
+
+		// sende Markierungen an alle Ausgangskanäle
+		if (this.left != this.right) {
+			this.forwarder.sendMarker(this.left);
+			this.forwarder.sendMarker(this.right);
+		} else {
+			this.forwarder.sendMarker(this.left);
+		}
+
+	}
+
+	synchronized void nextSnapshot(int count, String tokenID) {
+		if (this.recmode != IDLE) {
+			totalFishies = this.fishies.size()-shCount;
+		}
+
+		int newCount = totalFishies + count;
+		forwarder.forwardSnapToken(left, new SnapToken(newCount, tokenID));
+		System.out.println("forwarded token with count: " + newCount);
+	}
+
+	synchronized void endRecord(InetSocketAddress sender) {
+		if (this.recmode == BOTH) {
+			if (sender.equals(left)) {
+				this.recmode = RIGHT;
+			} else if (sender.equals(right)) {
+				this.recmode = LEFT;
+			}
+		} else if (this.recmode == LEFT) {
+			if (sender.equals(left)) {
+				this.recmode = IDLE;
+			}
+		} else if (this.recmode == RIGHT) {
+			if (sender.equals(right)) {
+				this.recmode = IDLE;
+			}
+		}
 	}
 
 	public String getId() {
@@ -106,13 +163,16 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 			if (fish.hitsEdge())
 				if (hasToken) {
 					forwarder.handOff(fish, this);
+					++shCount;
 				} else {
 					fish.reverse();
 				}
 
 
-			if (fish.disappears())
+			if (fish.disappears()) {
+				--shCount;
 				it.remove();
+			}
 		}
 	}
 

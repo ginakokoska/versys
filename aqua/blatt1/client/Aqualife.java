@@ -13,5 +13,6 @@ public class Aqualife {
 		SwingUtilities.invokeLater(new AquaGui(tankModel));
 
 		tankModel.run();
+		System.out.println("finished?");
 	}
 }

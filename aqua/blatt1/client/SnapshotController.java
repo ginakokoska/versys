@@ -6,10 +6,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class SnapshotController implements ActionListener {
-	private final Component parent;
+	private final TankModel tankModel;
 
-	public SnapshotController(Component parent) {
-		this.parent = parent;
+	public SnapshotController(Component parent, TankModel tankModel) {
+		this.tankModel = tankModel;
 	}
 
 	@Override
