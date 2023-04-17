@@ -3,6 +3,8 @@ package aqua.blatt1.client;
 import java.net.InetSocketAddress;
 
 import aqua.blatt1.broker.NeighborUpdate;
+import aqua.blatt1.broker.SnapToken;
+import aqua.blatt1.broker.SnapshotMarker;
 import aqua.blatt1.broker.Token;
 import aqua.blatt1.common.Direction;
 import messaging.Endpoint;
@@ -49,10 +51,10 @@ public class ClientCommunicator {
 			}
 		}
 
-		public void forwardToken(TankModel tank) {
-			endpoint.send(tank.left, new Token());
-		}
+		public void forwardToken(TankModel tank) {endpoint.send(tank.left, new Token());}
+		public void forwardSnapToken(InetSocketAddress a, SnapToken s) {endpoint.send(a, s);}
 
+		public void sendMarker(TankModel tank) {endpoint.send(tank.left, new SnapshotMarker());}
 	}
 
 	public class ClientReceiver extends Thread {
@@ -83,6 +85,10 @@ public class ClientCommunicator {
 					} catch (InterruptedException e) {
 						throw new RuntimeException(e);
 					}
+				}
+
+				if (msg.getPayload() instanceof SnapshotMarker) {
+					tankModel.initiateSnapshot();
 				}
 			}
 			System.out.println("Receiver stopped.");

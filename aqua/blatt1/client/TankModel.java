@@ -4,8 +4,12 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+
+import aqua.blatt1.broker.SnapToken;
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
+
+import static aqua.blatt1.client.TankModel.Mode.IDLE;
 
 
 public class TankModel extends Observable implements Iterable<FishModel> {
@@ -22,6 +26,9 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected InetSocketAddress right;
 	protected Boolean hasToken = false;
 	protected Timer timer;
+	protected enum Mode {IDLE, LEFT, RIGHT, BOTH}
+	protected Mode recmode = IDLE;
+	protected int fishCount = 0;
 
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
@@ -50,6 +57,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	synchronized void receiveFish(FishModel fish) {
 		fish.setToStart();
 		fishies.add(fish);
+		fishCount++;
 	}
 
 	synchronized void receiveToken() throws InterruptedException {
@@ -70,6 +78,11 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	synchronized void updateNeighbors(InetSocketAddress left, InetSocketAddress right) {
 		this.left = left;
 		this.right = right;
+	}
+
+	synchronized void initiateSnapshot() {
+		this.recmode = IDLE;
+		forwarder.forwardSnapToken(left, new SnapToken(fishCount));
 	}
 
 	public String getId() {
