@@ -27,12 +27,13 @@ public class ClientCommunicator {
 	public class ClientForwarder {
 		private final InetSocketAddress broker;
 
+
+
 		private ClientForwarder() {
 			this.broker = new InetSocketAddress(Properties.HOST, Properties.PORT);
 		}
 
 		public void register() {
-
 			endpoint.send(broker, new RegisterRequest());
 		}
 
@@ -53,9 +54,7 @@ public class ClientCommunicator {
 		}
 
 		public void forwardToken(TankModel tank) {
-			System.out.println("IP:"+this.broker+" tried to give away Token to "+tank.left+"(forwardTokenMethod)");
 			endpoint.send(tank.left, new Token());
-			System.out.println("after");
 		}
 		public void forwardSnapToken(InetSocketAddress a, SnapToken s) {endpoint.send(a, s);}
 		public void sendMarker(InetSocketAddress next) {endpoint.send(next, new SnapshotMarker());
@@ -65,6 +64,7 @@ public class ClientCommunicator {
 	public class ClientReceiver extends Thread {
 		private final TankModel tankModel;
 
+
 		private ClientReceiver(TankModel tankModel) {
 			this.tankModel = tankModel;
 		}
@@ -73,17 +73,19 @@ public class ClientCommunicator {
 		public void run() {
 			while (!isInterrupted()) {
 				Message msg = endpoint.blockingReceive();
-				System.out.println(msg);
-				if (msg.getPayload() instanceof RegisterResponse)
-					tankModel.onRegistration(((RegisterResponse) msg.getPayload()).getId());
+				if (msg.getPayload() instanceof RegisterResponse) {
+					System.out.println("rResponse");
+					tankModel.onRegistration(((RegisterResponse) msg.getPayload()).getId(), ((RegisterResponse) msg.getPayload()).getLeaseDur(), ((RegisterResponse) msg.getPayload()).getRe());
+				}
 
-				if (msg.getPayload() instanceof HandoffRequest)
-
+				if (msg.getPayload() instanceof HandoffRequest) {
+					System.out.println("hRequest");
 					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish(), msg.getSender());
-				if (msg.getPayload() instanceof Token) {
+				}
 
+				if (msg.getPayload() instanceof Token) {
+					System.out.println("token");
 					try {
-						System.out.println("ID:"+tankModel.id+" tried to receive Token");
 						tankModel.receiveToken();
 					} catch (Exception e) {
 						System.out.println("Token Exception!");
@@ -91,16 +93,19 @@ public class ClientCommunicator {
 					}
 				}
 				if (msg.getPayload() instanceof NeighborUpdate) {
+					System.out.println("nUpdate");
 					tankModel.updateNeighbors((((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getLeft(), (((NeighborUpdate) msg.getPayload()).getNeighborUpdate()).getRight());
 				}
 				if (msg.getPayload() instanceof SnapshotMarker) {
+					System.out.println("sMarker");
 					InetSocketAddress sender = msg.getSender();
 					tankModel.endRecord(sender);
 				}
 				if (msg.getPayload() instanceof SnapToken) {
-
+					System.out.println("sToken");
 					if (Objects.equals(((SnapToken) msg.getPayload()).getID(), tankModel.id)) {
 						tankModel.isSnapshotDone = true;
+						tankModel.totalFishies = ((SnapToken) msg.getPayload()).getCount();
 					}
 					else {
 						int newCount = tankModel.totalFishies + ((SnapToken) msg.getPayload()).getCount();

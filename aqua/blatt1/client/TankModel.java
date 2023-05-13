@@ -4,7 +4,6 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-
 import aqua.blatt1.broker.SnapToken;
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
@@ -26,7 +25,8 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected InetSocketAddress right;
 	protected Boolean hasToken = false;
 	protected Boolean hasSnapToken = false;
-	protected Timer timer;
+	protected Timer token_timer;
+	protected Timer lease_timer;
 	protected enum Mode {IDLE, LEFT, RIGHT, BOTH}
 	protected Mode recmode = IDLE;
 	protected int totalFishies = 0;
@@ -37,12 +37,19 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
 		this.forwarder = forwarder;
-		this.timer = new Timer();
 	}
 
-	synchronized void onRegistration(String id) {
+	synchronized void onRegistration(String id, int lease_dur, boolean re) {
 		this.id = id;
-		newFish(WIDTH - FishModel.getXSize(), rand.nextInt(HEIGHT - FishModel.getYSize()));
+		if (!re) newFish(WIDTH - FishModel.getXSize(), rand.nextInt(HEIGHT - FishModel.getYSize()));
+		TimerTask lease = new TimerTask() {
+			public void run() {
+				forwarder.register();
+				System.out.println("ReRegistered.");
+			}
+		};
+		lease_timer = new Timer(true);
+		lease_timer.schedule(lease, lease_dur);
 	}
 
 	public synchronized void newFish(int x, int y) {
@@ -60,7 +67,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	synchronized void receiveFish(FishModel fish, InetSocketAddress sender) {
 		fish.setToStart();
 		fishies.add(fish);
-		// only update fishcount wenn marker noch nicht gesezt ist
+		// only update fishcount wenn marker noch nicht gesetzt ist
 		if (this.recmode == BOTH) {
 			totalFishies++;
 		} else if (this.recmode == LEFT) {
@@ -76,16 +83,14 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 	synchronized void receiveToken() throws InterruptedException {
 		hasToken = true;
-		System.out.println("ID:"+this.id + " has Token");
 		TimerTask sendToken = new TimerTask() {
 			public void run() {
 				hasToken = false;
-				System.out.println("ID:"+TankModel.this.id + " gave away Token");
 				forwarder.forwardToken(TankModel.this); //?
 			}
 		};
-		timer.schedule(sendToken, 2000);
-		System.out.println("after timer");
+		token_timer = new Timer(true);
+		token_timer.schedule(sendToken, 2000);
 	}
 
 	synchronized Boolean hasToken(){
@@ -93,8 +98,8 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	}
 
 	synchronized void updateNeighbors(InetSocketAddress left, InetSocketAddress right) {
-		this.left = left;
-		this.right = right;
+		if (left != null) this.left = left;
+		if (right != null) this.right = right;
 	}
 
 	protected void initiateSnapshot() {
@@ -122,7 +127,6 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 		int newCount = totalFishies + count;
 		forwarder.forwardSnapToken(left, new SnapToken(newCount, tokenID));
-		System.out.println("forwarded token with count: " + newCount);
 	}
 
 	synchronized void endRecord(InetSocketAddress sender) {

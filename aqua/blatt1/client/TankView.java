@@ -27,6 +27,7 @@ public class TankView extends JPanel implements Observer {
 				repaint();
 				if (tankModel.isSnapshotDone) {
 					tankModel.isSnapshotDone = false;
+					// if snapshot done -> machen
 					count = tankModel.totalFishies;
 					JOptionPane.showMessageDialog(TankView.this, "Total Fishies: " + count);
 				}

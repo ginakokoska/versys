@@ -9,7 +9,10 @@ import messaging.Message;
 
 import java.awt.*;
 
-import javax.swing.*;
+import javax.sound.midi.Soundbank;
+import java.sql.Timestamp;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.*;
 import java.net.InetSocketAddress;
 import java.util.concurrent.locks.Lock;
@@ -20,11 +23,16 @@ public class Broker {
 	static Endpoint end = new Endpoint(4711);
 	private ExecutorService pool;
 	static boolean stopFlag = false;
+	private static final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+	private static final Lock writeLock = readWriteLock.writeLock();
+	private static final Lock readLock = readWriteLock.readLock();
+	static int lease_dur = 5000;
 
 	static ClientCollection<InetSocketAddress> cc = new ClientCollection<InetSocketAddress>();
 	public void broker() {
 
 		pool = Executors.newCachedThreadPool();
+		runLeaseCleaner();
 		while (!stopFlag) {
 			Message msg = end.blockingReceive();
 			BrokerTask t = new BrokerTask(msg);
@@ -57,16 +65,47 @@ public class Broker {
 
 	public static class BrokerTask implements Runnable {
 		Message msg;
-		private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-		private final Lock writeLock = readWriteLock.writeLock();
-		private final Lock readLock = readWriteLock.readLock();
+
 		public BrokerTask(Message msg) {
 			this.msg = msg;
 		}
 
 
 		public void register(InetSocketAddress cli) {
-			InetSocketAddress left_left;
+			System.out.println(cli + " tried register in Broker");
+			writeLock.lock();
+			int idx = cc.indexOf(cli);
+			System.out.println("idx: " + idx);
+			System.out.println("size: " + cc.size());
+			System.out.println("cc: " + cc);
+			if (idx != -1) {
+				System.out.println("New Timestamp update");
+				cc.updateTimestamp(idx);
+				String id = cc.getID(idx);
+				end.send(cli, new RegisterResponse(lease_dur, id, true));
+				writeLock.unlock();
+				return;
+			}
+
+			String id = "tank" + (cc.size() + 1);
+			cc.add(id, cli);
+			System.out.println("Added id: " + id);
+			System.out.println("size after add: " + cc.size());
+			if (cc.size() == 1) {
+				end.send(cli, new NeighborUpdate(cli, cli));
+				end.send(cli, new Token());
+			} else {
+				InetSocketAddress left = cc.getLeftNeighorOf(idx);
+				InetSocketAddress right = cc.getRightNeighorOf(idx);
+				end.send(cli, new NeighborUpdate(left, right));
+				end.send(left, new NeighborUpdate(null, cli));
+				end.send(right, new NeighborUpdate(cli, null));
+			}
+			System.out.println("New Registration");
+			end.send(cli, new RegisterResponse(lease_dur, id, false));
+			writeLock.unlock();
+
+			/*InetSocketAddress left_left;
 			InetSocketAddress right_right;
 			if (cc.size() == 0) {
 				left_left = cli;
@@ -82,7 +121,7 @@ public class Broker {
 			}
 			String id = "tank" + (cc.size()+1);
 			cc.add(id, cli);
-			int idx = cc.indexOf(cli);
+
 			InetSocketAddress left = cc.getLeftNeighorOf(idx);
 			InetSocketAddress right = cc.getRightNeighorOf(idx);
 			NeighborUpdate n = new NeighborUpdate(left, right);
@@ -96,7 +135,10 @@ public class Broker {
 				end.send(cli, n);
 				end.send(left, left_n); // wenn n = 2
 			}
-			end.send(cli, new RegisterResponse(id));
+			end.send(cli, new RegisterResponse(lease_dur, id));
+			*/
+
+
 		}
 
 		// aufrufen bei DeregisterRequest
@@ -159,6 +201,36 @@ public class Broker {
 				stopFlag = true;
 				writeLock.unlock();
 			}
+		}
+	}
+
+	public static void runLeaseCleaner() {
+		//System.out.println("Started lease cleanup");
+		TimerTask task = new LeaseCleanup();
+		Timer timer = new Timer(true);
+		timer.schedule(task, 5000);
+	}
+
+	public static class LeaseCleanup extends TimerTask {
+		@Override
+		public void run() {
+			//System.out.println("cleaning up...");
+			for (int i = 0; i < cc.size(); i++) {
+				writeLock.lock();
+				Timestamp now = new Timestamp(System.currentTimeMillis());
+				var x = now.getTime() - cc.getTimestamp(i).getTime();
+				System.out.println("compare: " + x);
+				if (now.getTime() - cc.getTimestamp(i).getTime() >= lease_dur) {
+					InetSocketAddress leftNeighbor = cc.getLeftNeighorOf(i);
+					InetSocketAddress rightNeighbor = cc.getRightNeighorOf(i);
+					end.send(leftNeighbor, new NeighborUpdate(null, rightNeighbor));
+					end.send(rightNeighbor, new NeighborUpdate(leftNeighbor, null));
+					cc.remove(i);
+					System.out.println("Deregistration of client at index: " + i + " due to lease expiry");
+				}
+				writeLock.unlock();
+			}
+			runLeaseCleaner();
 		}
 	}
 
